@@ -1,0 +1,4 @@
+bootstrap/*.sh text eol=lf
+migrations/*.sql text eol=lf
+seed/*.sql text eol=lf
+tests/*.sql text eol=lf
