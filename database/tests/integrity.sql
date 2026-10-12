@@ -33,7 +33,7 @@ VALUES('10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000
 SELECT pg_temp.expect_error($q$UPDATE analytics_runs SET period_start='2026-10-12T07:00Z' WHERE organization_id='10000000-0000-0000-0000-000000000001'$q$,'23514');
 SELECT pg_temp.expect_error($q$UPDATE activity_intervals SET ended_at='2026-10-12T16:00Z' WHERE organization_id='10000000-0000-0000-0000-000000000001'$q$,'23514');
 SELECT pg_temp.expect_error($q$UPDATE activity_events SET occurred_at='2026-10-12T08:00Z' WHERE organization_id='10000000-0000-0000-0000-000000000001'$q$,'23514');
-UPDATE activity_intervals SET category='neutral' WHERE organization_id='10000000-0000-0000-0000-000000000001';
+UPDATE activity_intervals SET category='neutral' WHERE organization_id='10000000-0000-0000-0000-000000000001' AND id='10000000-0000-0000-0000-000000000001';
 INSERT INTO work_sessions(organization_id,employee_id,department_id,policy_version_id,started_at,ended_at,end_reason)
 VALUES('10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','2026-10-13T20:00Z','2026-10-14T04:00Z','schedule');
 INSERT INTO devices(organization_id,employee_id,name,platform)
@@ -41,5 +41,18 @@ VALUES('10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000
 DO $$ BEGIN
 IF NOT EXISTS (SELECT FROM audit_log WHERE table_name='policy_versions' AND operation='UPDATE') THEN RAISE EXCEPTION 'Audit not generated'; END IF;
 END $$;
-\echo Integrity checks passed (13 expected failures + valid interval update, night shift, second device, audit).
+DO $$ DECLARE r uuid:=gen_random_uuid(); i uuid:=gen_random_uuid(); tenant uuid:='10000000-0000-0000-0000-000000000001';
+BEGIN
+ INSERT INTO analytics_runs(organization_id,id,session_id,policy_version_id,period_start,period_end,algorithm_version,status)
+ VALUES(tenant,r,tenant,tenant,'2026-10-12T06:00Z','2026-10-12T07:00Z','immutability-test','running');
+ INSERT INTO activity_intervals(organization_id,id,run_id,session_id,category,started_at,ended_at)
+ VALUES(tenant,i,r,tenant,'productive','2026-10-12T06:00Z','2026-10-12T06:30Z');
+ INSERT INTO interval_sources(organization_id,interval_id,event_id) VALUES(tenant,i,tenant);
+ UPDATE analytics_runs SET status='completed',completed_at=now() WHERE id=r;
+ PERFORM pg_temp.expect_error(format('UPDATE analytics_runs SET algorithm_version=''changed'' WHERE id=%L',r),'23514');
+ PERFORM pg_temp.expect_error(format('UPDATE activity_intervals SET category=''idle'' WHERE id=%L',i),'23514');
+ PERFORM pg_temp.expect_error(format('DELETE FROM activity_intervals WHERE id=%L',i),'23514');
+ PERFORM pg_temp.expect_error(format('DELETE FROM interval_sources WHERE interval_id=%L',i),'23514');
+END $$;
+\echo Integrity checks passed (17 expected failures + valid mutable interval update, night shift, second device, audit).
 ROLLBACK;

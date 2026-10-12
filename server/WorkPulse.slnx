@@ -2,5 +2,7 @@
   <Project Path="WorkPulse.Domain/WorkPulse.Domain.csproj" />
   <Project Path="WorkPulse.Application/WorkPulse.Application.csproj" />
   <Project Path="WorkPulse.Demo/WorkPulse.Demo.csproj" />
+  <Project Path="WorkPulse.Api/WorkPulse.Api.csproj" />
+  <Project Path="WorkPulse.Infrastructure/WorkPulse.Infrastructure.csproj" />
   <Folder Name="/tests/"><Project Path="tests/WorkPulse.Tests/WorkPulse.Tests.csproj" /></Folder>
 </Solution>

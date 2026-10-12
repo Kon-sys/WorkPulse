@@ -1,0 +1,95 @@
+@startuml
+!pragma layout smetana
+skinparam monochrome true
+skinparam shadowing false
+title WorkPulse – основные классы ЛР9
+package Api {
+ class Endpoints {
++MapWorkspaceEndpoints()
+}
+ class Security {
++AddWorkspaceSecurity()
+}
+}
+package Application {
+ class UserAccess {
++CanRead(employee, department)
++CanReview(employee, department)
+}
+ interface IEventInbox {
++Ingest(device, events)
+}
+ interface IAnalysisResults {
++Run(user, id)
+}
+ interface IResourceClassifier {
++Classify(resource, policy)
+}
+ class PolicyResourceClassifier
+ class ActivityReconstructor {
++Reconstruct(...)
+}
+ class ViolationDetector {
++Detect(...)
+}
+ class AnalysisRun
+}
+package Infrastructure {
+ class IdentityStore {
++GetUser()
++AuthenticateDevice()
+}
+ class TenantDatabase {
++Execute(organization, actor, action)
+}
+ class TenantTransaction {
++Query(sql, parameters)
+}
+ class WorkspaceStore {
++StartSession()
++Ingest()
++Analyze()
++Run()
+}
+}
+package Domain {
+ class WorkSession {
++Start()
++StartBreak()
++EndBreak()
++End()
+}
+ class SessionBreak
+ class PolicySnapshot
+}
+package Agent {
+ class WindowsObservation {
++Read(idleSeconds)
+}
+ class DiskOutbox {
++Append(event)
++Flush(client, token)
+}
+}
+Endpoints --> IEventInbox
+Endpoints --> IAnalysisResults
+Endpoints --> WorkspaceStore : административные сценарии
+Security --> IdentityStore
+WorkspaceStore ..|> IEventInbox
+WorkspaceStore ..|> IAnalysisResults
+PolicyResourceClassifier ..|> IResourceClassifier
+ActivityReconstructor --> IResourceClassifier
+WorkspaceStore --> TenantDatabase
+IdentityStore --> TenantDatabase
+TenantDatabase *-- TenantTransaction
+WorkspaceStore --> ActivityReconstructor
+WorkspaceStore --> ViolationDetector
+WorkspaceStore --> WorkSession
+WorkspaceStore --> PolicySnapshot
+WorkspaceStore --> AnalysisRun
+WorkSession *-- SessionBreak
+note bottom of DiskOutbox
+ HTTP-обработчик заменяется в self-test.
+ Событие удаляется только после подтверждения.
+end note
+@enduml
