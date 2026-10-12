@@ -1,0 +1,42 @@
+name: workpulse-database
+services:
+  postgres:
+    image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    environment:
+      POSTGRES_DB: workpulse
+      POSTGRES_USER: workpulse_owner
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:?Run setup.ps1}
+      APP_DB_PASSWORD: ${DB_APP_PASSWORD:?Run setup.ps1}
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C
+    ports:
+      - "127.0.0.1:${DB_PORT:-55432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./bootstrap:/docker-entrypoint-initdb.d:ro
+      - ./seed:/seed:ro
+      - ./tests:/tests:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U workpulse_owner -d workpulse"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  migrate:
+    image: redgate/flyway@sha256:e6f8368fe0d2bf4cd5091e5e0497b93ff0116914e01f93613997e924fd431e82
+    profiles: [tools]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/workpulse
+      FLYWAY_USER: workpulse_owner
+      FLYWAY_PASSWORD: ${DB_OWNER_PASSWORD:?Run setup.ps1}
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+      FLYWAY_DEFAULT_SCHEMA: workpulse
+      FLYWAY_CREATE_SCHEMAS: "true"
+      FLYWAY_CLEAN_DISABLED: "true"
+      FLYWAY_VALIDATE_MIGRATION_NAMING: "true"
+    volumes:
+      - ./migrations:/flyway/sql:ro
+    command: migrate
+volumes:
+  pgdata:
