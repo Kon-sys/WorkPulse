@@ -15,7 +15,10 @@ SELECT set_config('app.organization_id','10000000-0000-0000-0000-000000000001',t
 SELECT set_config('app.actor_id','10000000-0000-0000-0000-000000000001',true);
 DO $$ DECLARE affected integer;
 BEGIN
-    IF (SELECT count(*) FROM workpulse.organizations) <> 1 OR (SELECT count(*) FROM workpulse.employees) <> 1 THEN RAISE EXCEPTION 'Isolation failed'; END IF;
+    IF (SELECT count(*) FROM workpulse.organizations) <> 1
+       OR NOT EXISTS(SELECT FROM workpulse.employees WHERE id='10000000-0000-0000-0000-000000000001')
+       OR EXISTS(SELECT FROM workpulse.employees WHERE organization_id<>'10000000-0000-0000-0000-000000000001')
+       THEN RAISE EXCEPTION 'Isolation failed'; END IF;
     UPDATE workpulse.employees SET full_name='Attack' WHERE organization_id='20000000-0000-0000-0000-000000000001';
     GET DIAGNOSTICS affected=ROW_COUNT;
     IF affected<>0 THEN RAISE EXCEPTION 'Cross-tenant update succeeded'; END IF;

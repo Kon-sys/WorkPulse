@@ -1,0 +1,36 @@
+@startuml
+!pragma layout smetana
+skinparam monochrome true
+skinparam shadowing false
+title WorkPulse – фактическое локальное развёртывание ЛР9
+node "Windows: пользовательская сессия" {
+ artifact "Браузер\nReact UI" as browser
+ artifact "WorkPulse.Agent\n.NET 10, ручной запуск" as agent
+ folder "Локальный дисковый буфер\nсобытия JSON" as buffer
+}
+node "Локальный ПК разработчика" {
+ artifact "Vite\n127.0.0.1:4173" as vite
+ node "ASP.NET Core 10\n127.0.0.1:5080" {
+  artifact "WorkPulse.Api" as api
+  artifact "Application + Domain" as core
+  artifact "Infrastructure / Npgsql" as infra
+ }
+ node "Docker Compose" {
+  database "PostgreSQL 18.6\n127.0.0.1:55432" as db
+  artifact "Flyway\nзапуск для миграций" as flyway
+ }
+}
+browser --> vite : HTTP, UI + /api proxy
+vite --> api : HTTP, cookie + CSRF
+agent --> api : HTTP loopback\nBearer, JSON
+agent --> buffer : запись до отправки
+api --> core : DI / сценарии
+api --> infra : DI
+infra --> db : TCP, workpulse_app\nRLS + транзакция tenant
+flyway --> db : миграции, роль owner
+note bottom of api
+ Один модульный сервер.
+ Вне localhost требуется HTTPS.
+ Агент и браузер не подключаются к БД.
+end note
+@enduml

@@ -1,0 +1,49 @@
+@startuml
+!pragma layout smetana
+skinparam monochrome true
+skinparam shadowing false
+left to right direction
+title WorkPulse – варианты использования ЛР9
+actor "Сотрудник" as employee
+actor "HR" as hr
+actor "Руководитель" as manager
+actor "Администратор\nорганизации" as admin
+actor "Windows-агент" as agent
+rectangle WorkPulse {
+ usecase "Вход по паролю" as login
+ usecase "Читать доступных сотрудников,\nсессии и результаты" as read
+ usecase "Управлять своей\nсессией и обедом" as session
+ usecase "Анализировать сессию\nи читать историю" as analysis
+ usecase "Разрешить отсутствие;\nрассмотреть нарушение" as review
+ usecase "Настроить пользователей,\nустройства и политики" as settings
+ usecase "Принять пакет событий\nс дедупликацией" as events
+ usecase "Автоматически начать\nсессию по сигналу" as start
+ usecase "Скачать интервалы CSV\nв браузере" as export
+}
+employee --> login
+employee --> read
+employee --> session
+employee --> export
+hr --> login
+hr --> read
+hr --> analysis
+hr --> review
+hr --> export
+manager --> login
+manager --> read
+manager --> analysis
+manager --> review
+manager --> export
+admin --> login
+admin --> settings
+admin --> read
+admin --> analysis
+admin --> review
+agent --> events : токен устройства
+start ..> events : <<extend>>\nLogin/Focus/Input\nбез текущей сессии
+note bottom of read
+ Организация ограничена идентичностью.
+ HR/admin – организация; manager – подразделение;
+ employee – только свои данные.
+end note
+@enduml
