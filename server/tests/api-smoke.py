@@ -94,6 +94,7 @@ check(len(second['violations'])==0,'late input recalculates continuous interval'
 check(len(admin.call('GET','/analysis-runs/'+first['id'])['violations'])==1,'previous result remains immutable')
 check(not any(v['employee_id']==late_employee['id'] for v in admin.call('GET','/violations')),'obsolete violation excluded from current journal')
 admin.call('POST','/devices',{'employeeId':late_employee['id'],'name':'SILENT-'+suffix,'platform':'windows'})
+time.sleep(.25) # Allow bounded database/host clock skew after registration.
 unknown=admin.call('POST','/sessions/'+late_session['id']+'/analysis',{'until':now(),'signalLifetimeSeconds':120})
 check(not any(i['category']=='Idle' for i in unknown['intervals']),'silent device prevents unconfirmed idle')
 print(f'{passed} total API integration checks passed.')
