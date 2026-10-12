@@ -1,0 +1,17 @@
+@startuml
+!pragma layout smetana
+skinparam monochrome true
+skinparam shadowing false
+title WorkPulse – зависимости пакетов ЛР8
+package "WorkPulse.Domain" as domain
+package "WorkPulse.Application" as app
+package "WorkPulse.Demo" as demo
+package "WorkPulse.Tests" as tests
+app ..> domain
+demo ..> app
+tests ..> app
+note bottom of domain
+Без зависимостей от HTTP, EF Core и PostgreSQL.
+Схему database/migrations эти библиотеки не изменяют.
+end note
+@enduml
