@@ -1,0 +1,37 @@
+@startuml
+!pragma layout smetana
+skinparam monochrome true
+skinparam shadowing false
+title WorkPulse – компоненты и границы реализации
+package "Реализовано в ЛР8" {
+  component "WorkPulse.Demo\nконсольный запуск" as demo
+  component "WorkPulse.Application\nреконструкция и нарушения" as app
+  component "WorkPulse.Domain\nсессии, перерывы, политики" as domain
+  interface IAnalysisRunStore as store
+  component "InMemoryAnalysisRunStore\nдемонстрационный адаптер" as memory
+  demo --> app
+  app --> domain
+  app ..> store
+  memory -- store
+  demo --> memory
+}
+package "Существующие части" {
+  component "ui-prototype\nReact, демоданные" as ui
+  database "PostgreSQL\nсхема ЛР7" as db
+}
+package "Запланировано; не реализовано" {
+  component "ASP.NET Core API\nавторизация, HTTP" as api
+  component "Infrastructure\nPostgreSQL adapter" as infra
+  component "Windows Agent" as agent
+  ui ..> api : будущий HTTPS
+  agent ..> api : будущие события
+  api ..> app
+  api ..> infra
+  infra ..> store
+  infra ..> db
+}
+note bottom of api
+Модульный сервер – один процесс.
+Domain/Application – библиотеки внутри него.
+end note
+@enduml

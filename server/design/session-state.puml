@@ -1,0 +1,32 @@
+@startuml
+!pragma layout smetana
+skinparam monochrome true
+skinparam shadowing false
+title WorkSession – состояния и условия переходов
+state "Сессия отсутствует" as none
+state "Открыта" as open {
+  state "Без открытого перерыва" as working
+  state "Обед" as lunch
+  state "Разрешённое отсутствие" as absent
+  state "Другой перерыв" as rest
+  [*] --> working
+  working --> lunch : StartBreak(Lunch)\n[обеда ещё не было]
+  working --> absent : StartBreak(AuthorizedAbsence)
+  working --> rest : StartBreak(Rest)
+  lunch --> working : EndBreak(at)\n[at > начало]
+  absent --> working : EndBreak(at)\n[at > начало]
+  rest --> working : EndBreak(at)\n[at > начало]
+}
+state "Закрыта" as closed
+[*] --> none
+none --> open : StartFromSignal(Login / Focus / Input)\n[своя опубликованная политика]
+open --> closed : End(at, Manual / Logout)\n[границы корректны; открытый перерыв закрывается]
+closed --> [*]
+note right of open
+Состояние выводится из EndedAt и Breaks.
+Окончание графика не вызывает переход.
+Некорректный вызов – исключение без перехода.
+Logout отдельного устройства при анализе
+не равен команде завершения общей сессии.
+end note
+@enduml
