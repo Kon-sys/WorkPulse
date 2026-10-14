@@ -3,7 +3,7 @@ using WorkPulse.Application;
 namespace WorkPulse.Infrastructure;
 
 public sealed record PolicyRule(Guid ResourceId,string Category);
-public sealed record PolicyInput(string Name,int IdleLimitSeconds,int NonTargetLimitSeconds,int LunchLimitSeconds,string TimeZone,IReadOnlyList<PolicyRule> Rules);
+public sealed record PolicyInput(string Name,int IdleLimitSeconds,int NonTargetLimitSeconds,int LunchLimitSeconds,string TimeZone,IReadOnlyList<PolicyRule> Rules,IReadOnlyList<ScheduleDay>? Schedule=null,int LateGraceSeconds=300,int EarlyGraceSeconds=300);
 
 public sealed partial class WorkspaceStore
 {
@@ -45,10 +45,14 @@ public sealed partial class WorkspaceStore
     {
         Admin(user);
         if(input.Rules is null || input.Rules.Count>1000 || input.Rules.Any(r=>r.Category is not ("productive" or "non_target" or "neutral"))) throw new RequestFault(400,"Некорректные правила классификации.");
+        var days=input.Schedule ?? [];
+        if(days.Count>7 || days.Select(d=>d.IsoWeekday).Distinct().Count()!=days.Count || days.Any(d=>d.IsoWeekday is <1 or >7 || (!d.EndsNextDay && d.EndsAt<=d.StartsAt) || (d.EndsNextDay && d.EndsAt>d.StartsAt)) || input.LateGraceSeconds is <0 or >86400 || input.EarlyGraceSeconds is <0 or >86400) throw new RequestFault(400,"Некорректный график или допуски.");
         var p=await db.One("INSERT INTO monitoring_policies(organization_id,name) VALUES(@org,@name) ON CONFLICT(organization_id,name) DO UPDATE SET name=EXCLUDED.name RETURNING id",("org",user.OrganizationId),("name",input.Name));
         var policy=(Guid)p!["id"]!;var version=Guid.NewGuid();
         await db.Query("INSERT INTO policy_versions(organization_id,id,policy_id,version_number,idle_limit_seconds,non_target_limit_seconds,lunch_limit_seconds,time_zone) SELECT @org,@id,@policy,coalesce(max(version_number),0)+1,@idle,@target,@lunch,@zone FROM policy_versions WHERE policy_id=@policy",
             ("org",user.OrganizationId),("id",version),("policy",policy),("idle",input.IdleLimitSeconds),("target",input.NonTargetLimitSeconds),("lunch",input.LunchLimitSeconds),("zone",input.TimeZone));
+        await db.Query("UPDATE policy_versions SET late_grace_seconds=@late,early_grace_seconds=@early WHERE id=@id",("late",input.LateGraceSeconds),("early",input.EarlyGraceSeconds),("id",version));
+        foreach(var day in days) await db.Query("INSERT INTO schedule_days(organization_id,policy_version_id,iso_weekday,starts_at,ends_at,ends_next_day) VALUES(@org,@version,@day,@start,@end,@next)",("org",user.OrganizationId),("version",version),("day",day.IsoWeekday),("start",day.StartsAt),("end",day.EndsAt),("next",day.EndsNextDay));
         foreach(var rule in input.Rules) await db.Query("INSERT INTO classification_rules(organization_id,policy_version_id,resource_id,category) VALUES(@org,@version,@resource,@category)",
             ("org",user.OrganizationId),("version",version),("resource",rule.ResourceId),("category",rule.Category));
         await db.Query("UPDATE policy_versions SET published_at=now() WHERE id=@id",("id",version));

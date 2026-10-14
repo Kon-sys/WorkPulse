@@ -43,6 +43,7 @@ public static class Endpoints
         api.MapGet("/policies",(HttpContext c,WorkspaceStore s)=>s.Policies(User(c)));
         api.MapPost("/policies",(PolicyInput i,HttpContext c,WorkspaceStore s)=>s.CreatePolicy(User(c),i with {Name=InputValidation.Text(i.Name)}));
         api.MapPost("/policies/{id:guid}/assignments",(Guid id,AssignmentInput i,HttpContext c,WorkspaceStore s)=>s.AssignPolicy(User(c),id,i.Scope,i.TargetId));
+        api.MapPost("/resources",(ResourceInput i,HttpContext c,WorkspaceStore s)=>s.CreateResource(User(c),i.Kind,InputValidation.Text(i.Identifier,128)));
         api.MapGet("/resources",(HttpContext c,WorkspaceStore s)=>s.Resources(User(c)));
         api.MapGet("/employees/{id:guid}/sessions",(Guid id,HttpContext c,WorkspaceStore s)=>s.Sessions(User(c),id));
         api.MapPost("/employees/{id:guid}/sessions",(Guid id,HttpContext c,WorkspaceStore s)=>s.StartSession(User(c),id));
@@ -53,6 +54,13 @@ public static class Endpoints
         api.MapPost("/sessions/{id:guid}/analysis",(Guid id,AnalysisInput i,HttpContext c,WorkspaceStore s)=>s.Analyze(User(c),id,i.Until,i.SignalLifetimeSeconds));
         api.MapGet("/employees/{id:guid}/analysis-runs",(Guid id,HttpContext c,WorkspaceStore s)=>s.Runs(User(c),id));
         api.MapGet("/analysis-runs/{id:guid}",async (Guid id,HttpContext c,IAnalysisResults s)=>Results.Content(await s.Run(User(c),id),"application/json"));
+        api.MapGet("/reports",(DateTimeOffset start,DateTimeOffset end,Guid? employeeId,Guid? departmentId,HttpContext c,WorkspaceStore s)=>s.Report(User(c),start,end,employeeId,departmentId));
+        api.MapGet("/reports/export/{format}",async (string format,DateTimeOffset start,DateTimeOffset end,Guid? employeeId,Guid? departmentId,HttpContext c,WorkspaceStore s)=>
+        {
+            if(format is not ("pdf" or "xlsx"))throw new RequestFault(400,"Формат: pdf или xlsx.");
+            var report=await s.Report(User(c),start,end,employeeId,departmentId);
+            return Results.File(format=="pdf"?ReportExport.Pdf(report):ReportExport.Xlsx(report),format=="pdf"?"application/pdf":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",$"WorkPulse-{start:yyyyMMdd}-{end:yyyyMMdd}.{format}");
+        });
         api.MapGet("/violations",(HttpContext c,WorkspaceStore s)=>s.Violations(User(c)));
         api.MapGet("/violations/{id:guid}",(Guid id,HttpContext c,WorkspaceStore s)=>s.ViolationDetails(User(c),id));
         api.MapPatch("/violations/{id:guid}",(Guid id,ReviewInput i,HttpContext c,WorkspaceStore s)=>s.ReviewViolation(User(c),id,i.Status,i.Comment));

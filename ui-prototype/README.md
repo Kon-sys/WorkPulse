@@ -18,3 +18,5 @@ Vite проксирует `/api` на `127.0.0.1:5080`. Самостоятель
 Проверки: `npm run check`, `npm run build`, `npm run test:sites`. Chrome desktop/mobile: вход, шесть разделов, результат анализа, CSV и отсутствие администраторских кнопок у HR. Подробности: [lr9-verification.md](../server/lr9-verification.md).
 
 [Исходный редактируемый макет Figma](https://www.figma.com/design/ANBCWFTYaghJqVXF43wvEr?node-id=6-27) отражает прототип ЛР6; серверные формы и состояния ЛР9 реализованы в коде. Макет не обновлялся на этом этапе.
+
+ЛР10: ReportingPanel показывает реальные KPI/сравнение периодов и скачивает PDF/XLSX. Добавлены график политики, ресурсы, фильтры нарушений и подробности для сотрудника. Браузерный тест: npm run test:live (работающие API/БД/UI, Chrome; сначала server/tests/lr10-integration.py).

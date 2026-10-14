@@ -1,38 +1,7 @@
 using WorkPulse.Application;
 using WorkPulse.Domain;
 
-var tests = new (string Name, Action Test)[]
-{
-    ("session guards and single lunch", Tests.SessionGuards),
-    ("night shift uses absolute time", Tests.NightShift),
-    ("only login or activity can start a session", Tests.StartSignals),
-    ("foreign tenant and unpublished policy rejected", Tests.PolicyOwnership),
-    ("missing data is unknown, not idle", Tests.Unknown),
-    ("idle needs confirmation from every device", Tests.AllDevicesIdle),
-    ("latest input selects device; no double accounting", Tests.MultipleDevices),
-    ("equal timestamps select deterministic device", Tests.Tie),
-    ("duplicate delivery is idempotent; conflict rejected", Tests.Duplicates),
-    ("out-of-order delivery does not change result", Tests.Reordered),
-    ("expiry produces unknown; heartbeat cannot revive stale state", Tests.Expiry),
-    ("breaks override activity and interrupt violation", Tests.Breaks),
-    ("strict threshold, continuous non-target across resources", Tests.Threshold),
-    ("late event creates a new immutable run", Tests.LateEvent),
-    ("tenant/device/period/options validation", Tests.Validation),
-    ("unknown resource is neutral; snapshot is immutable", Tests.Classification),
-    ("half-open boundaries, period clipping", Tests.Boundaries),
-    ("device logout does not close employee session", Tests.DeviceLogout),
-    ("random timelines have total coverage and are permutation invariant", Tests.RandomTimelines)
-};
-int failures = 0;
-foreach (var (name, test) in tests)
-{
-    try { test(); Console.WriteLine($"PASS {name}"); }
-    catch (Exception e) { failures++; Console.Error.WriteLine($"FAIL {name}: {e}"); }
-}
-Console.WriteLine($"{tests.Length - failures}/{tests.Length} test groups passed.");
-return failures == 0 ? 0 : 1;
-
-internal static class Tests
+public sealed class KernelTests
 {
     private static readonly Guid Org = Guid.Parse("10000000-0000-0000-0000-000000000001");
     private static readonly Guid Employee = Guid.Parse("30000000-0000-0000-0000-000000000001");
@@ -64,7 +33,8 @@ internal static class Tests
     private static string Shape(IReadOnlyList<ActivityInterval> intervals) => string.Join(";", intervals.Select(i =>
         $"{i.Start:O}/{i.End:O}/{i.Category}/{string.Join(',', i.Sources)}"));
 
-    public static void SessionGuards()
+    [Xunit.Fact]
+    public void SessionGuards()
     {
         var s = Session(Policy()); s.StartBreak(Guid.NewGuid(), BreakKind.Lunch, Start.AddSeconds(10));
         Reject(() => s.StartBreak(Guid.NewGuid(), BreakKind.Rest, Start.AddSeconds(11)));
@@ -80,13 +50,15 @@ internal static class Tests
         Reject(() => s.StartBreak(Guid.NewGuid(), BreakKind.Rest, Start.AddSeconds(50)));
     }
 
-    public static void NightShift()
+    [Xunit.Fact]
+    public void NightShift()
     {
         var s = Session(Policy()); s.End(Start.AddHours(8), EndReason.Manual);
         Equal(TimeSpan.FromHours(8), s.EndedAt!.Value - s.StartedAt);
     }
 
-    public static void StartSignals()
+    [Xunit.Fact]
+    public void StartSignals()
     {
         var p = Policy();
         foreach (var kind in new[] { EventKind.Login, EventKind.Focus, EventKind.Input })
@@ -95,7 +67,8 @@ internal static class Tests
             Reject(() => WorkSession.StartFromSignal(E(0, kind), Guid.NewGuid(), Guid.NewGuid(), p));
     }
 
-    public static void PolicyOwnership()
+    [Xunit.Fact]
+    public void PolicyOwnership()
     {
         var p = new PolicySnapshot(Guid.NewGuid(), Guid.NewGuid(), Start.AddDays(-1), TimeSpan.FromSeconds(1),
             TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), new Dictionary<Guid, ActivityCategory>());
@@ -105,13 +78,15 @@ internal static class Tests
         Reject(() => Session(p));
     }
 
-    public static void Unknown()
+    [Xunit.Fact]
+    public void Unknown()
     {
         var p = Policy(); var i = Timeline(Session(p), p, 300, []);
         Equal(1, i.Count); Equal(ActivityCategory.Unknown, i[0].Category); Equal(0, Detect(i, p).Count);
     }
 
-    public static void AllDevicesIdle()
+    [Xunit.Fact]
+    public void AllDevicesIdle()
     {
         var p = Policy(); var s = Session(p);
         var one = E(0, EventKind.Idle);
@@ -122,7 +97,8 @@ internal static class Tests
         Equal(ActivityCategory.Productive, active[0].Category);
     }
 
-    public static void MultipleDevices()
+    [Xunit.Fact]
+    public void MultipleDevices()
     {
         var p = Policy(); var i = Timeline(Session(p), p, 60,
             [E(0, EventKind.Focus, Productive), E(0, EventKind.Focus, NonTarget, D2),
@@ -131,27 +107,31 @@ internal static class Tests
         Equal(60d, i.Sum(x => x.Duration.TotalSeconds));
     }
 
-    public static void Tie()
+    [Xunit.Fact]
+    public void Tie()
     {
         var p = Policy(); var i = Timeline(Session(p), p, 60,
             [E(0, EventKind.Focus, NonTarget, D2), E(0, EventKind.Focus, Productive)], [D2, D1]);
         Equal(ActivityCategory.Productive, i[0].Category);
     }
 
-    public static void Duplicates()
+    [Xunit.Fact]
+    public void Duplicates()
     {
         var p = Policy(); var s = Session(p); var e = E(0, EventKind.Focus, Productive);
         Equal(Shape(Timeline(s, p, 60, [e])), Shape(Timeline(s, p, 60, [e, e with { ReceivedAt = Start.AddMinutes(10) }])));
         Reject(() => Timeline(s, p, 60, [e, e with { ResourceId = NonTarget }]));
     }
 
-    public static void Reordered()
+    [Xunit.Fact]
+    public void Reordered()
     {
         var p = Policy(); var s = Session(p); var events = new[] { E(0, EventKind.Focus, NonTarget), E(30, EventKind.Input), E(50, EventKind.Idle) };
         Equal(Shape(Timeline(s, p, 100, events)), Shape(Timeline(s, p, 100, events.Reverse().ToArray())));
     }
 
-    public static void Expiry()
+    [Xunit.Fact]
+    public void Expiry()
     {
         var p = Policy(); var s = Session(p);
         var i = Timeline(s, p, 90, [E(0, EventKind.Focus, Productive), E(50, EventKind.Heartbeat)], lifetime: 30);
@@ -162,7 +142,8 @@ internal static class Tests
         Equal(1, continuous.Count); Equal(ActivityCategory.Productive, continuous[0].Category);
     }
 
-    public static void Breaks()
+    [Xunit.Fact]
+    public void Breaks()
     {
         var p = Policy(); var s = Session(p);
         s.StartBreak(Guid.NewGuid(), BreakKind.Lunch, Start.AddSeconds(20)); s.EndBreak(Start.AddSeconds(60));
@@ -172,7 +153,8 @@ internal static class Tests
         var v = Detect(i, p); Equal(1, v.Count); Equal(ViolationKind.LunchOverrun, v[0].Kind);
     }
 
-    public static void Threshold()
+    [Xunit.Fact]
+    public void Threshold()
     {
         var p = Policy(); var s = Session(p); var e = E(0, EventKind.Focus, NonTarget);
         Equal(0, Detect(Timeline(s, p, 30, [e]), p).Count);
@@ -189,7 +171,8 @@ internal static class Tests
         public void Append(AnalysisRun run) => Runs.Add(run);
     }
 
-    public static void LateEvent()
+    [Xunit.Fact]
+    public void LateEvent()
     {
         var p = Policy(); var s = Session(p); var store = new Store();
         var service = new AnalysisService(new(new PolicyResourceClassifier()), new(new()), store);
@@ -202,7 +185,8 @@ internal static class Tests
         Equal(false, first.Id == second.Id); Equal(1, second.Violations.Count);
     }
 
-    public static void Validation()
+    [Xunit.Fact]
+    public void Validation()
     {
         var p = Policy(); var s = Session(p); var e = E(0, EventKind.Idle);
         Reject(() => Timeline(s, p, 60, [e with { OrganizationId = Guid.NewGuid() }]));
@@ -214,7 +198,8 @@ internal static class Tests
         Reject(() => Timeline(s, p, 60, [e], [D1, D1]));
     }
 
-    public static void Classification()
+    [Xunit.Fact]
+    public void Classification()
     {
         var map = new Dictionary<Guid, ActivityCategory> { [Productive] = ActivityCategory.Productive };
         var p = new PolicySnapshot(Org, Guid.NewGuid(), Start.AddDays(-1), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), map);
@@ -225,7 +210,8 @@ internal static class Tests
         Equal(ActivityCategory.Neutral, classifier.Classify(null, p));
     }
 
-    public static void Boundaries()
+    [Xunit.Fact]
+    public void Boundaries()
     {
         var p = Policy(); var s = Session(p); s.End(Start.AddSeconds(60), EndReason.Manual);
         var i = Timeline(s, p, 100, [E(0, EventKind.Focus, Productive)]);
@@ -235,7 +221,8 @@ internal static class Tests
         Equal(10d, Timeline(open, p, 60, [])[1].Duration.TotalSeconds);
     }
 
-    public static void DeviceLogout()
+    [Xunit.Fact]
+    public void DeviceLogout()
     {
         var p = Policy(); var s = Session(p);
         var i = Timeline(s, p, 90, [E(0, EventKind.Focus, Productive), E(0, EventKind.Focus, NonTarget, D2),
@@ -244,7 +231,8 @@ internal static class Tests
         Equal(true, s.EndedAt is null);
     }
 
-    public static void RandomTimelines()
+    [Xunit.Fact]
+    public void RandomTimelines()
     {
         var random = new Random(814301);
         for (int iteration = 0; iteration < 100; iteration++)

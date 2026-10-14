@@ -8,7 +8,8 @@
     "build": "vite build && node scripts/prepare-sites-build.mjs",
     "preview": "vite preview",
     "test:sites": "node --test tests/sites-worker.test.mjs",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test:live": "node tests/live-ui.cjs"
   },
   "dependencies": {
     "@fontsource/manrope": "5.3.0",
@@ -25,6 +26,7 @@
     "vite": "6.4.2"
   },
   "devDependencies": {
+    "playwright": "1.64.0",
     "prettier": "3.9.10"
   }
 }

@@ -13,7 +13,7 @@ public sealed partial class WorkspaceStore
     {
         ActivityCategory.NonTarget=>"non_target",ActivityCategory.AuthorizedAbsence=>"authorized_absence",_=>category.ToString().ToLowerInvariant()
     };
-    private static string DbViolation(ViolationKind kind)=>kind switch {ViolationKind.NonTarget=>"non_target",ViolationKind.LunchOverrun=>"lunch_overrun",_=>"idle"};
+    private static string DbViolation(ViolationKind kind)=>kind switch {ViolationKind.NonTarget=>"non_target",ViolationKind.LunchOverrun=>"lunch_overrun",ViolationKind.LateArrival=>"late_arrival",ViolationKind.EarlyDeparture=>"early_departure",_=>"idle"};
     private static BreakKind BreakType(string kind)=>kind switch {"lunch"=>BreakKind.Lunch,"authorized_absence"=>BreakKind.AuthorizedAbsence,"rest"=>BreakKind.Rest,_=>throw new RequestFault(400,"Неизвестный перерыв.")};
 
     private static async Task<PolicySnapshot> Policy(TenantTransaction db,Guid organization,Guid id)
@@ -158,7 +158,10 @@ public sealed partial class WorkspaceStore
         var devices=registered.Concat(events.Select(e=>e.DeviceId)).Distinct().ToArray();
         if(devices.Length==0) throw new RequestFault(409,"Нет устройств для анализа.");
         var intervals=reconstructor.Reconstruct(session,policy,until,devices,events,new AnalysisOptions(TimeSpan.FromSeconds(signalLifetime)));
-        var run=new AnalysisRun(Guid.NewGuid(),user.OrganizationId,session.Id,policy.Id,AnalysisService.AlgorithmVersion,TimeSpan.FromSeconds(signalLifetime),intervals[0].Start,intervals[^1].End,intervals,detector.Detect(intervals,policy));
+        var versionRow=(await db.One("SELECT time_zone,late_grace_seconds,early_grace_seconds FROM policy_versions WHERE id=@id",("id",policy.Id)))!;
+        var scheduleRows=await db.Query("SELECT * FROM schedule_days WHERE policy_version_id=@id",("id",policy.Id));
+        var schedule=ScheduleEvaluator.Evaluate(session,intervals,events,(string)versionRow["time_zone"]!,scheduleRows.Select(d=>new ScheduleDay(Convert.ToInt32(d["iso_weekday"]),(TimeOnly)d["starts_at"]!,(TimeOnly)d["ends_at"]!,(bool)d["ends_next_day"]!)).ToArray(),(int)versionRow["late_grace_seconds"]!,(int)versionRow["early_grace_seconds"]!);
+        var run=new AnalysisRun(Guid.NewGuid(),user.OrganizationId,session.Id,policy.Id,AnalysisService.AlgorithmVersion,TimeSpan.FromSeconds(signalLifetime),intervals[0].Start,intervals[^1].End,intervals,detector.Detect(intervals,policy).Concat(schedule.Violations).ToArray(),schedule);
         await db.Query("INSERT INTO analytics_runs(organization_id,id,session_id,policy_version_id,signal_lifetime_seconds,period_start,period_end,algorithm_version,status,result_snapshot) VALUES(@org,@id,@session,@policy,@ttl,@start,@end,@version,'running',@snapshot::jsonb)",
             ("org",user.OrganizationId),("id",run.Id),("session",session.Id),("policy",policy.Id),("ttl",signalLifetime),("start",run.PeriodStart),("end",run.PeriodEnd),("version",run.AlgorithmVersion),("snapshot",JsonSerializer.Serialize(run,SnapshotJson)));
         var eventIds=rows.ToDictionary(e=>new EventReference((Guid)e["device_id"]!,(Guid)e["client_event_id"]!),e=>(Guid)e["id"]!);

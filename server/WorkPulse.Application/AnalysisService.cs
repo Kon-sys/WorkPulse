@@ -5,7 +5,7 @@ namespace WorkPulse.Application;
 public sealed record AnalysisRun(
     Guid Id, Guid OrganizationId, Guid SessionId, Guid PolicyVersionId,
     string AlgorithmVersion, TimeSpan SignalLifetime, DateTimeOffset PeriodStart, DateTimeOffset PeriodEnd,
-    IReadOnlyList<ActivityInterval> Intervals, IReadOnlyList<Violation> Violations);
+    IReadOnlyList<ActivityInterval> Intervals, IReadOnlyList<Violation> Violations, ScheduleEvaluation? Schedule = null);
 
 /// <summary>Port: saving a new run never overwrites a previous reconstruction.</summary>
 public interface IAnalysisRunStore
