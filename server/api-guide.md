@@ -1,4 +1,4 @@
-# WorkPulse – запуск ЛР9
+# WorkPulse – локальный запуск
 
 Рабочая цепочка: Windows-агент → ASP.NET Core API → PostgreSQL → React UI. Сервер использует ограниченную роль `workpulse_app`, транзакционный контекст организации и проверку области роли. Данные двух демонстрационных организаций синтетические.
 
@@ -15,7 +15,7 @@
 .\server\api.ps1 -Action seed
 ```
 
-`up` сохраняет существующий volume и применяет Flyway-миграции. Исходные V001–V007 не изменены; V008 добавляет учётные данные и снимки анализа, V009 – защиту завершённых результатов и связь нарушений с актуальным запуском. Повторный `seed` не сбрасывает существующие пароли.
+`up` сохраняет существующий volume и применяет Flyway-миграции. Исходные V001–V007 не изменены; V008 добавляет учётные данные и снимки анализа, V009 – защиту завершённых результатов и связь нарушений с актуальным запуском; V010 – график и оценки его соблюдения. Повторный `seed` не сбрасывает существующие пароли.
 
 Демонстрационные организации:
 
@@ -135,3 +135,6 @@ Volume и данные сохраняются. Для повторного за�
 Контракт: [api-contract.md](api-contract.md). Проверки: [lr9-verification.md](lr9-verification.md). Схемы: [design/lr9-models.md](design/lr9-models.md).
 
 Для тестов и покрытия: server/run.ps1 -Action test или -Action coverage; затем server/coverage-summary.ps1. HTTP-прогон: python server/tests/lr10-integration.py. UI: npm --prefix ui-prototype run test:live после HTTP-прогона и запуска UI.
+
+
+Полное руководство развёртывания ЛР11: [deployment/README.md](../deployment/README.md). Руководство пользователя: [deployment/user-guide.md](../deployment/user-guide.md). Изолированная проверка восстановления: deployment/verify.ps1.
