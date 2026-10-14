@@ -23,3 +23,5 @@ public static class InputValidation
         if(password is null || password.Length is <12 or >128) throw new WorkPulse.Application.RequestFault(400,"Пароль должен содержать от 12 до 128 символов.");
     }
 }
+
+public sealed record ResourceInput(string Kind,string Identifier);

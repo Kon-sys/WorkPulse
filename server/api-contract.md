@@ -128,3 +128,11 @@ CRUD-ответы из PostgreSQL используют имена `snake_case`; 
 - KISS: один сервер и PostgreSQL, без брокера и дополнительных сетевых аналитических служб. SQL-миграции Flyway – единственный источник схемы.
 
 Использованные источники библиотек: [Npgsql basic usage](https://www.npgsql.org/doc/basic-usage.html), [ASP.NET Core CSRF](https://learn.microsoft.com/aspnet/core/security/anti-request-forgery), [ASP.NET Core OpenAPI](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/aspnetcore-openapi?view=aspnetcore-10.0). Npgsql 10.0.0 и Microsoft.AspNetCore.OpenApi 10.0.12 закреплены в csproj.
+
+## Дополнение ЛР10 (14.10.2026, полный прогон успешен)
+
+POST /resources: {kind:application/domain,identifier:string}, admin. PolicyInput дополнен schedule?:[{isoWeekday:1..7,startsAt:HH:mm:ss,endsAt:HH:mm:ss,endsNextDay:bool}], lateGraceSeconds/earlyGraceSeconds (0..86400, по умолчанию 300). График публикуется вместе с версией, не закрывает сессию.
+
+GET /reports?start=ISO8601&end=ISO8601&employeeId?=UUID&departmentId?=UUID возвращает ReportResult (start/end/employees/departments/basis). Все данные ограничены ролями/RLS; период до 93 дней и не в будущем. Metrics содержит секунды категорий, доли и coverage; null означает отсутствие знаменателя. ScheduleCompliance учитывает только полностью включённые сессии с известной оценкой границ.
+
+GET /reports/export/pdf и /reports/export/xlsx используют те же параметры и область. Ответ 200 – бинарный файл с Content-Disposition; неподдерживаемый формат или диапазон – 400, чужой employeeId – 404. Ошибки экспорта не скрываются успешной пустой выдачей. Детали и ограничения: testing/README.md.

@@ -6,7 +6,7 @@ public enum BreakKind { Lunch, AuthorizedAbsence, Rest }
 public enum EndReason { Manual, Logout }
 public enum EventKind { Login, Focus, Input, Idle, Heartbeat, Logout }
 public enum ActivityCategory { Productive, NonTarget, Neutral, Idle, Lunch, AuthorizedAbsence, Unknown }
-public enum ViolationKind { Idle, NonTarget, LunchOverrun }
+public enum ViolationKind { Idle, NonTarget, LunchOverrun, LateArrival, EarlyDeparture }
 
 public static class Guard
 {

@@ -4,6 +4,7 @@ using WorkPulse.Api;
 using WorkPulse.Infrastructure;
 using WorkPulse.Application;
 
+ReportExport.ConfigureFont();
 var builder=WebApplication.CreateBuilder(args);
 var connection=builder.Configuration.GetConnectionString("WorkPulse") ?? throw new InvalidOperationException("Set ConnectionStrings__WorkPulse using server/api.ps1.");
 builder.Services.AddSingleton(NpgsqlDataSource.Create(connection));

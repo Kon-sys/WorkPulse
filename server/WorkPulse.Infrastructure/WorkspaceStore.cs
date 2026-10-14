@@ -69,13 +69,13 @@ public sealed partial class WorkspaceStore(TenantDatabase database,WorkPulse.App
         return true;
     });
 
-    public Task<List<Dictionary<string,object?>>> Policies(UserAccess user)=>ForUser(user,db=>db.Query("SELECT p.name,v.* FROM monitoring_policies p JOIN policy_versions v ON v.organization_id=p.organization_id AND v.policy_id=p.id ORDER BY p.name,v.version_number DESC LIMIT 1000"));
+    public Task<List<Dictionary<string,object?>>> Policies(UserAccess user)=>ForUser(user,db=>db.Query("SELECT p.name,v.*,(SELECT coalesce(jsonb_agg(jsonb_build_object('isoWeekday',iso_weekday,'startsAt',starts_at,'endsAt',ends_at,'endsNextDay',ends_next_day)),'[]'::jsonb)::text FROM schedule_days WHERE organization_id=v.organization_id AND policy_version_id=v.id) AS schedule FROM monitoring_policies p JOIN policy_versions v ON v.organization_id=p.organization_id AND v.policy_id=p.id ORDER BY p.name,v.version_number DESC LIMIT 1000"));
     public Task<List<Dictionary<string,object?>>> Resources(UserAccess user)=>ForUser(user,db=>db.Query("SELECT * FROM resources ORDER BY identifier LIMIT 1000"));
 
     public Task<List<Dictionary<string,object?>>> Violations(UserAccess user)=>ForUser(user,async db=>
     {
         var ids=(await EmployeesInTransaction(db,user)).Select(e=>(Guid)e["id"]!).ToHashSet();
-        return (await db.Query("SELECT v.*,e.full_name FROM violations v JOIN employees e ON e.organization_id=v.organization_id AND e.id=v.employee_id WHERE "+ReadScope+" AND (v.latest_run_id IS NULL OR v.latest_run_id=(SELECT r.id FROM analytics_runs r WHERE r.organization_id=v.organization_id AND r.session_id=v.session_id AND r.status='completed' ORDER BY r.completed_at DESC,r.id LIMIT 1)) ORDER BY v.detected_at DESC LIMIT 1000",Scope(user)))
+        return (await db.Query("SELECT v.*,e.full_name,e.department_id FROM violations v JOIN employees e ON e.organization_id=v.organization_id AND e.id=v.employee_id WHERE "+ReadScope+" AND (v.latest_run_id IS NULL OR v.latest_run_id=(SELECT r.id FROM analytics_runs r WHERE r.organization_id=v.organization_id AND r.session_id=v.session_id AND r.status='completed' ORDER BY r.completed_at DESC,r.id LIMIT 1)) ORDER BY v.detected_at DESC LIMIT 1000",Scope(user)))
             .Where(v=>ids.Contains((Guid)v["employee_id"]!)).ToList();
     });
     public Task<object> ReviewViolation(UserAccess user,Guid id,string status,string? comment)=>ForUser<object>(user,async db=>
