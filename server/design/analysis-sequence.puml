@@ -1,0 +1,41 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+title Анализ сессии – основной поток и отдельный пересчёт
+participant "demo : Program" as demo
+participant "service : AnalysisService" as service
+participant "timeline : ActivityReconstructor" as timeline
+participant "classifier : PolicyResourceClassifier" as classifier
+participant "detector : ViolationDetector" as detector
+participant "rule : ExceedsLimitSpecification" as rule
+participant "store : InMemoryAnalysisRunStore" as store
+demo -> service : Analyze(session, policy, until, devices, events, options)
+service -> timeline : Reconstruct(...)
+activate timeline
+timeline -> timeline : Validate; deduplicate; sort; build boundaries
+loop Каждый элементарный интервал
+  timeline -> timeline : Apply events; select break or device
+  opt Есть подтверждённая активность
+    timeline -> classifier : Classify(resource, policy)
+    classifier --> timeline : category
+  end
+  timeline -> timeline : Merge adjacent equal categories
+end
+timeline --> service : read-only intervals
+deactivate timeline
+service -> detector : Detect(intervals, policy)
+loop Интервал Idle / NonTarget / Lunch
+  detector -> rule : IsSatisfiedBy(duration, limit)
+  rule --> detector : duration > limit
+end
+detector --> service : read-only violations
+service -> service : Create AnalysisRun(new id, version, options)
+service -> store : Append(run)
+store --> service : saved in memory
+service --> demo : AnalysisRun
+note over demo,store
+После позднего события вызывается новый Analyze.
+Новый run добавляется; старый не изменяется.
+Автоматического фонового пересчёта в ЛР8 нет.
+end note
+@enduml

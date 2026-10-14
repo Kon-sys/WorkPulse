@@ -1,0 +1,32 @@
+{
+  "name": "workpulse-web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/prepare-sites-build.mjs",
+    "preview": "vite preview",
+    "test:sites": "node --test tests/sites-worker.test.mjs",
+    "check": "tsc --noEmit",
+    "test:live": "node tests/live-ui.cjs"
+  },
+  "dependencies": {
+    "@fontsource/manrope": "5.3.0",
+    "@radix-ui/react-dialog": "1.3.0",
+    "@tabler/icons-react": "3.49.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.0.4",
+    "motion": "14.1.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "recharts": "3.10.1",
+    "typescript": "7.0.2",
+    "vite": "6.4.2"
+  },
+  "devDependencies": {
+    "playwright": "1.64.0",
+    "prettier": "3.9.10"
+  }
+}

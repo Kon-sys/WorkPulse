@@ -1,0 +1,90 @@
+@startuml
+!pragma layout smetana
+skinparam monochrome true
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+title WorkPulse – реализованные классы ЛР8
+package Domain {
+  class WorkSession <<Aggregate Root>> {
+    +Id : Guid
+    +OrganizationId : Guid
+    +EmployeeId : Guid
+    +PolicyVersionId : Guid
+    +StartedAt : DateTimeOffset
+    +EndedAt : DateTimeOffset?
+    +Start(...): WorkSession
+    +StartFromSignal(...): WorkSession
+    +StartBreak(...)
+    +EndBreak(at)
+    +End(at, reason)
+  }
+  class SessionBreak {
+    +Kind : BreakKind
+    +StartedAt : DateTimeOffset
+    +EndedAt : DateTimeOffset?
+    ~Close(end)
+  }
+  class PolicySnapshot <<Immutable>> {
+    +Id : Guid
+    +PublishedAt : DateTimeOffset
+    +IdleLimit : TimeSpan
+    +NonTargetLimit : TimeSpan
+    +LunchLimit : TimeSpan
+    +ResourceCategories : IReadOnlyDictionary
+  }
+  class ActivityEvent <<record>>
+  class ActivityInterval <<record>>
+  class Violation <<record>>
+}
+package Application {
+  class AnalysisService {
+    +Analyze(...): AnalysisRun
+  }
+  class AnalysisRun <<record>>
+  class AnalysisOptions <<record>> {
+    +SignalLifetime : TimeSpan
+    +Validate()
+  }
+  class ActivityReconstructor {
+    +Reconstruct(...): IReadOnlyList<ActivityInterval>
+  }
+  interface IResourceClassifier <<Strategy>> {
+    +Classify(resource, policy): ActivityCategory
+  }
+  class PolicyResourceClassifier
+  class ViolationDetector {
+    +Detect(intervals, policy): IReadOnlyList<Violation>
+  }
+  class ExceedsLimitSpecification <<Specification>> {
+    +IsSatisfiedBy(duration, limit): bool
+  }
+  interface IAnalysisRunStore <<Port>> {
+    +Append(run)
+  }
+}
+package Demo {
+  class Program <<top-level entry point>>
+  class InMemoryAnalysisRunStore <<Adapter>> {
+    +Runs : IReadOnlyList<AnalysisRun>
+    +Append(run)
+  }
+}
+WorkSession "1" *-- "0..*" SessionBreak
+WorkSession ..> PolicySnapshot
+AnalysisService --> ActivityReconstructor
+AnalysisService --> ViolationDetector
+AnalysisService --> IAnalysisRunStore
+AnalysisService ..> AnalysisRun
+AnalysisService ..> AnalysisOptions
+ActivityReconstructor --> IResourceClassifier
+PolicyResourceClassifier ..|> IResourceClassifier
+InMemoryAnalysisRunStore ..|> IAnalysisRunStore
+Program ..> AnalysisService
+Program ..> InMemoryAnalysisRunStore
+ViolationDetector --> ExceedsLimitSpecification
+ActivityReconstructor ..> ActivityEvent
+ActivityReconstructor ..> ActivityInterval
+ViolationDetector ..> Violation
+AnalysisRun "1" *-- "1..*" ActivityInterval
+AnalysisRun "1" *-- "0..*" Violation
+@enduml

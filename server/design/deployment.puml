@@ -1,0 +1,32 @@
+@startuml
+!pragma layout smetana
+skinparam monochrome true
+skinparam shadowing false
+title WorkPulse – фактическое и целевое размещение
+node "ПК разработчика / демонстрация ЛР8" {
+  node ".NET 10" {
+    artifact "WorkPulse.Demo.dll" as demo
+    artifact "WorkPulse.Application.dll" as application
+    artifact "WorkPulse.Domain.dll" as domain
+    demo --> application
+    application --> domain
+  }
+  node "Docker Compose ЛР7\nконтейнер остановлен" {
+    database "PostgreSQL 18.6\nvolume сохранён" as db
+  }
+  artifact "ui-prototype\nлокальный Vite / браузер" as ui
+}
+node "Целевой сервер (будущий этап)" {
+  artifact "ASP.NET Core\nAPI + модули + фоновые задачи" as server
+}
+node "Рабочая станция (будущий этап)" {
+  artifact "Windows Agent" as agent
+}
+ui ..> server : будущий HTTPS
+agent ..> server : будущий HTTPS
+server ..> db : будущее TCP / PostgreSQL
+note right of demo
+Сейчас нет HTTP и подключения к БД.
+Результаты демонстрации хранятся в памяти.
+end note
+@enduml
