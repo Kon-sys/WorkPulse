@@ -1,0 +1,7 @@
+<RunSettings>
+  <DataCollectionRunSettings><DataCollectors><DataCollector friendlyName="XPlat Code Coverage"><Configuration>
+    <Format>cobertura</Format>
+    <Include>[WorkPulse.Domain]*,[WorkPulse.Application]*,[WorkPulse.Api]*,[WorkPulse.Infrastructure]*</Include>
+    <Exclude>[*.Tests]*</Exclude><IncludeTestAssembly>false</IncludeTestAssembly>
+  </Configuration></DataCollector></DataCollectors></DataCollectionRunSettings>
+</RunSettings>
